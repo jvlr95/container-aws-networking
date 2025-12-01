@@ -1,4 +1,3 @@
-
 resource "aws_subnet" "database" {
   count = length(var.database_subnets)
 
@@ -16,13 +15,11 @@ resource "aws_subnet" "database" {
   ]
 }
 
-
 resource "aws_network_acl" "database" {
-
   vpc_id = aws_vpc.main.id
 
   egress {
-    rule_no    = 200
+    rule_no    = "200"
     protocol   = "-1"
     action     = "allow"
     cidr_block = "0.0.0.0/0"
@@ -55,10 +52,7 @@ resource "aws_network_acl_association" "database" {
   subnet_id      = aws_subnet.database[count.index].id
 }
 
-
 resource "aws_network_acl_rule" "allow_3306" {
-
-
   count = length(var.private_subnets)
 
   network_acl_id = aws_network_acl.database.id
@@ -75,10 +69,7 @@ resource "aws_network_acl_rule" "allow_3306" {
   to_port    = 3306
 }
 
-
 resource "aws_network_acl_rule" "allow_6379" {
-
-
   count = length(var.private_subnets)
 
   network_acl_id = aws_network_acl.database.id
@@ -94,4 +85,3 @@ resource "aws_network_acl_rule" "allow_6379" {
   from_port  = 6379
   to_port    = 6379
 }
-
