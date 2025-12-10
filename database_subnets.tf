@@ -18,31 +18,62 @@ resource "aws_subnet" "database" {
 resource "aws_network_acl" "database" {
   vpc_id = aws_vpc.main.id
 
-  egress {
-    rule_no    = "200"
-    protocol   = "-1"
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 0
-    to_port    = 0
-  }
-
   tags = {
     Name = format("%s-databases", var.project_name)
   }
-
 }
 
-resource "aws_network_acl_rule" "deny" {
+resource "aws_network_acl_rule" "allow_internal_ingress" {
+  count = length(var.private_subnets)
+
   network_acl_id = aws_network_acl.database.id
-  rule_number    = "300"
+
+  rule_number = 100 + count.index
+  rule_action = "allow"
+  protocol    = "-1"
+  cidr_block  = aws_subnet.private[count.index].cidr_block
+
+  from_port = 0
+  to_port   = 0
+  egress    = false
+}
+
+resource "aws_network_acl_rule" "allow_internal_egress" {
+  count = length(var.private_subnets)
+
+  network_acl_id = aws_network_acl.database.id
+  rule_number    = 200 + count.index
+  rule_action    = "allow"
+  protocol       = "-1"
+  cidr_block     = aws_subnet.private[count.index].cidr_block
+
+  from_port = 0
+  to_port   = 0
+  egress    = true
+}
+
+resource "aws_network_acl_rule" "deny_all_ingress" {
+  network_acl_id = aws_network_acl.database.id
+  rule_number    = 300
   rule_action    = "deny"
+  protocol       = "-1"
+  cidr_block     = "0.0.0.0/0"
 
-  protocol = "-1"
+  from_port = 0
+  to_port   = 0
+  egress    = false
+}
 
-  cidr_block = "0.0.0.0/0"
-  from_port  = 0
-  to_port    = 0
+resource "aws_network_acl_rule" "deny_all_egress" {
+  network_acl_id = aws_network_acl.database.id
+  rule_number    = 301
+  rule_action    = "deny"
+  protocol       = "-1"
+  cidr_block     = "0.0.0.0/0"
+
+  from_port = 0
+  to_port   = 0
+  egress    = true
 }
 
 resource "aws_network_acl_association" "database" {
@@ -50,38 +81,4 @@ resource "aws_network_acl_association" "database" {
 
   network_acl_id = aws_network_acl.database.id
   subnet_id      = aws_subnet.database[count.index].id
-}
-
-resource "aws_network_acl_rule" "allow_3306" {
-  count = length(var.private_subnets)
-
-  network_acl_id = aws_network_acl.database.id
-  rule_number    = 10 + count.index
-
-  egress = false
-
-  rule_action = "allow"
-
-  protocol = "tcp"
-
-  cidr_block = aws_subnet.private[count.index].cidr_block
-  from_port  = 3306
-  to_port    = 3306
-}
-
-resource "aws_network_acl_rule" "allow_6379" {
-  count = length(var.private_subnets)
-
-  network_acl_id = aws_network_acl.database.id
-  rule_number    = 20 + count.index
-
-  egress = false
-
-  rule_action = "allow"
-
-  protocol = "tcp"
-
-  cidr_block = aws_subnet.private[count.index].cidr_block
-  from_port  = 6379
-  to_port    = 6379
 }
